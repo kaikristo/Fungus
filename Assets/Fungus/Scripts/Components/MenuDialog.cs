@@ -18,11 +18,16 @@ namespace Fungus
     {
         [Tooltip("Automatically select the first interactable button when the menu is shown.")]
         [SerializeField] protected bool autoSelectFirstButton = false;
+        [Tooltip("Automatically add number to the button text.")]
+        [SerializeField] protected bool autoNumbering = false;
+        [Tooltip("Enable keyboard controls for the menu by using the number keys.")]
+        [SerializeField] protected bool keyboardControlsEnabled = false;
 
         protected Button[] cachedButtons;
 
         protected Slider cachedSlider;
         private int nextOptionIndex;
+        private MenuDialogKeyboardInput _keyboardInput;
 
         #region Public members
 
@@ -61,11 +66,11 @@ namespace Fungus
             if (ActiveMenuDialog == null)
             {
                 // Use first Menu Dialog found in the scene (if any)
-            #if UNITY_6000
+#if UNITY_6000
                 var md = GameObject.FindFirstObjectByType<MenuDialog>();
-            #else
+#else
                 var md = GameObject.FindObjectOfType<MenuDialog>();
-            #endif
+#endif
                 if (md != null)
                 {
                     ActiveMenuDialog = md;
@@ -103,17 +108,20 @@ namespace Fungus
             }
 
             CheckEventSystem();
+
+            if (keyboardControlsEnabled && cachedButtons != null)
+                _keyboardInput = new MenuDialogKeyboardInput(cachedButtons);
         }
 
         // There must be an Event System in the scene for Say and Menu input to work.
         // This method will automatically instantiate one if none exists.
         protected virtual void CheckEventSystem()
         {
-        #if UNITY_6000
+#if UNITY_6000
             EventSystem eventSystem = GameObject.FindFirstObjectByType<EventSystem>();
-        #else
+#else
             EventSystem eventSystem = GameObject.FindObjectOfType<EventSystem>();
-        #endif
+#endif
             if (eventSystem == null)
             {
                 // Auto spawn an Event System from the prefab
@@ -131,6 +139,12 @@ namespace Fungus
             // The canvas may fail to update if the menu dialog is enabled in the first game frame.
             // To fix this we just need to force a canvas update when the object is enabled.
             Canvas.ForceUpdateCanvases();
+        }
+
+        protected virtual void Update()
+        {
+            if (_keyboardInput != null && IsActive())
+                _keyboardInput.Process(DisplayedOptionsCount);
         }
 
         protected virtual IEnumerator WaitForTimeout(float timeoutDuration, Block targetBlock)
@@ -186,7 +200,7 @@ namespace Fungus
             StopAllCoroutines();
 
             //if something was shown notify that we are ending
-            if(nextOptionIndex != 0)
+            if (nextOptionIndex != 0)
                 MenuSignals.DoMenuEnd(this);
 
             nextOptionIndex = 0;
@@ -304,11 +318,11 @@ namespace Fungus
                 return false;
             }
             //if first option notify that a menu has started
-            if(nextOptionIndex == 0)
+            if (nextOptionIndex == 0)
                 MenuSignals.DoMenuStart(this);
 
             var button = cachedButtons[nextOptionIndex];
-            
+
             //move forward for next call
             nextOptionIndex++;
 
@@ -333,7 +347,7 @@ namespace Fungus
             }
 
             button.onClick.AddListener(action);
-            
+
             return true;
         }
 
@@ -410,7 +424,8 @@ namespace Fungus
         /// </summary>
         public virtual int DisplayedOptionsCount
         {
-            get {
+            get
+            {
                 int count = 0;
                 for (int i = 0; i < cachedButtons.Length; i++)
                 {
@@ -424,17 +439,17 @@ namespace Fungus
             }
         }
 
-		/// <summary>
-		/// Shuffle the parent order of the cached buttons, allows for randomising button order, buttons are auto reordered when cleared
-		/// </summary>
-		public void Shuffle(System.Random r)
-		{
-			for (int i = 0; i < CachedButtons.Length; i++)
-			{
-				CachedButtons[i].transform.SetSiblingIndex(r.Next(CachedButtons.Length));
-			}
-		}
+        /// <summary>
+        /// Shuffle the parent order of the cached buttons, allows for randomising button order, buttons are auto reordered when cleared
+        /// </summary>
+        public void Shuffle(System.Random r)
+        {
+            for (int i = 0; i < CachedButtons.Length; i++)
+            {
+                CachedButtons[i].transform.SetSiblingIndex(r.Next(CachedButtons.Length));
+            }
+        }
 
         #endregion
-    }    
+    }
 }
